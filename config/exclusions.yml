@@ -1,0 +1,160 @@
+# ToolboxNinja Web - Scan Exclusions Configuration
+# This file defines what should be excluded when scanning toolbox repositories
+
+# Directories to completely exclude from scanning
+exclude_directories:
+  # Version control and CI/CD
+  - ".git"
+  - ".github" 
+  - ".gitlab-ci"
+  - ".circleci"
+  
+  # Documentation and web files
+  - "docs"
+  - "_site"
+  - "site"
+  - "public"
+  - "dist"
+  - "build"
+  
+  # Development artifacts
+  - "target"          # Rust build artifacts
+  - "node_modules"    # Node.js dependencies
+  - "vendor"          # Ruby/PHP dependencies
+  - ".bundle"         # Ruby bundle
+  - "__pycache__"     # Python cache
+  - ".pytest_cache"   # Python test cache
+  - "venv"            # Python virtual environment
+  - "env"             # Environment files
+  
+  # IDE and editor files
+  - ".vscode"
+  - ".idea"
+  - ".sublime-*"
+  - "*.swp"
+  - "*.swo"
+  - "*~"
+  
+  # OS generated files
+  - ".DS_Store"
+  - "Thumbs.db"
+  - "desktop.ini"
+  
+  # Temporary and cache directories
+  - "tmp"
+  - "temp"
+  - "cache"
+  - ".cache"
+  - "logs"
+  - "log"
+
+# File patterns to exclude
+exclude_files:
+  # Documentation files (handled separately)
+  - "*.md"
+  - "README*"
+  - "LICENSE*"
+  - "CHANGELOG*"
+  - "CONTRIBUTING*"
+  
+  # Configuration files
+  - "*.yml"
+  - "*.yaml" 
+  - "*.json"
+  - "*.toml"
+  - "*.ini"
+  - "*.conf"
+  - "*.cfg"
+  
+  # Build and dependency files
+  - "Cargo.toml"
+  - "Cargo.lock"
+  - "package.json"
+  - "package-lock.json"
+  - "yarn.lock"
+  - "Gemfile"
+  - "Gemfile.lock"
+  - "requirements.txt"
+  - "setup.py"
+  - "Makefile"
+  - "makefile"
+  - "CMakeLists.txt"
+  
+  # Archive and binary files
+  - "*.tar.gz"
+  - "*.zip"
+  - "*.rar"
+  - "*.7z"
+  - "*.deb"
+  - "*.rpm"
+  - "*.dmg"
+  - "*.exe"
+  - "*.msi"
+  
+  # Image and media files
+  - "*.png"
+  - "*.jpg"
+  - "*.jpeg"
+  - "*.gif"
+  - "*.svg"
+  - "*.ico"
+  - "*.mp4"
+  - "*.avi"
+  - "*.mov"
+  
+  # Backup and temporary files
+  - "*.bak"
+  - "*.backup"
+  - "*.old"
+  - "*.orig"
+  - "*.tmp"
+  - "*~"
+  - ".#*"
+
+# Special exclusions for toolbox repositories
+toolbox_exclusions:
+  # Web and documentation infrastructure
+  - "toolboxninja_web"     # Web repository (if nested)
+  - "documentation"        # Documentation directory
+  - "website"             # Website directory
+  - "web"                 # Web directory
+  
+  # Build and deployment
+  - "deployment"          # Deployment scripts
+  - "ci"                  # CI/CD scripts
+  - "scripts/web*"        # Web-related scripts
+  - "scripts/deploy*"     # Deployment scripts
+  - "scripts/doc*"        # Documentation scripts
+  
+  # Development tools
+  - "tools/web*"          # Web development tools
+  - "utils/doc*"          # Documentation utilities
+  - "helpers/build*"      # Build helpers
+
+# Include only these file extensions for script scanning
+include_extensions:
+  - ".sh"
+  - ".bash"
+
+# Categories that should always be scanned (even if they match exclusions)
+force_include_categories:
+  - "LinuxTools"
+  - "SystemSecurity"
+  - "NetworkUtils"
+  - "BackupUtilities"
+  - "MonitoringTools"
+  - "SystemUtilities"
+
+# Minimum requirements for a valid toolbox script
+script_requirements:
+  # Must be executable
+  executable: true
+  
+  # Must have shebang
+  shebang_required: true
+  
+  # Minimum file size (bytes)
+  min_size: 50
+  
+  # Must have at least one metadata tag
+  require_metadata: false  # Set to false for graceful handling

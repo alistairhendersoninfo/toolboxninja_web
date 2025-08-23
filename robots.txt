@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://$(git config --get remote.origin.url | sed 's/.*github\.com[:/]\([^/]*\)\/\([^.]*\).*/\1.github.io\/\2/')/sitemap.xml

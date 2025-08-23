@@ -1,0 +1,166 @@
+name: Generate Documentation from Remote Repository
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'config/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+  schedule:
+    # Run daily at 2 AM UTC to check for updates
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      toolbox_repo:
+        description: 'Toolbox repository URL'
+        required: false
+        default: 'https://github.com/yourusername/toolboxninja'
+      force_rebuild:
+        description: 'Force complete rebuild'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout web repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+    
+    - name: Load configuration
+      id: config
+      run: |
+        if [ -f "config/toolbox_config.yml" ]; then
+          TOOLBOX_REPO=$(yq eval '.toolbox_repositories[0].url' config/toolbox_config.yml 2>/dev/null || echo "https://github.com/yourusername/toolboxninja")
+        else
+          TOOLBOX_REPO="${{ github.event.inputs.toolbox_repo || 'https://github.com/yourusername/toolboxninja' }}"
+        fi
+        echo "toolbox_repo=$TOOLBOX_REPO" >> $GITHUB_OUTPUT
+        echo "📊 Toolbox Repository: $TOOLBOX_REPO"
+    
+    - name: Checkout toolbox repository
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ steps.config.outputs.toolbox_repo }}
+        path: toolbox_source
+        fetch-depth: 1
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq yq
+    
+    - name: Make scripts executable
+      run: |
+        chmod +x scripts/*.sh
+    
+    - name: Check for changes
+      id: changes
+      run: |
+        # Check if we should regenerate docs
+        FORCE_REBUILD="${{ github.event.inputs.force_rebuild || 'false' }}"
+        
+        if [ "$FORCE_REBUILD" = "true" ]; then
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "🔄 Force rebuild requested"
+        elif [ ! -f "docs/scripts_metadata.json" ]; then
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "📝 No existing documentation found"
+        else
+          # Check if source repository has newer commits
+          cd toolbox_source
+          LATEST_COMMIT=$(git log -1 --format="%H")
+          cd ..
+          
+          if [ -f ".last_scan_commit" ]; then
+            LAST_COMMIT=$(cat .last_scan_commit)
+            if [ "$LATEST_COMMIT" != "$LAST_COMMIT" ]; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "🔄 Source repository has updates"
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "✅ Documentation is up to date"
+            fi
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "📝 First scan of repository"
+          fi
+          
+          echo "$LATEST_COMMIT" > .last_scan_commit
+        fi
+    
+    - name: Generate documentation
+      if: steps.changes.outputs.changed == 'true'
+      run: |
+        echo "📚 Generating documentation from toolbox repository..."
+        
+        # Run the documentation generator on the source repository
+        ./scripts/generate_documentation.sh toolbox_source
+        
+        echo "✅ Documentation generation completed"
+    
+    - name: Create web pages
+      if: steps.changes.outputs.changed == 'true'
+      run: |
+        echo "🌐 Creating enhanced web pages..."
+        ./scripts/create_web_pages.sh
+        echo "✅ Web pages created"
+    
+    - name: Validate documentation
+      if: steps.changes.outputs.changed == 'true'
+      run: |
+        echo "✅ Validating documentation..."
+        ./scripts/validate_documentation.sh || echo "⚠️ Validation warnings (non-blocking)"
+    
+    - name: Check for documentation changes
+      id: verify-changed-files
+      run: |
+        if [ -n "$(git status --porcelain docs/ _site/)" ]; then
+          echo "changed=true" >> $GITHUB_OUTPUT
+        else
+          echo "changed=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Commit documentation changes
+      if: steps.verify-changed-files.outputs.changed == 'true'
+      run: |
+        git add docs/ _site/ .last_scan_commit
+        
+        # Get commit info from source repository
+        cd toolbox_source
+        LATEST_COMMIT_MSG=$(git log -1 --format="%s")
+        LATEST_COMMIT_HASH=$(git log -1 --format="%h")
+        SCRIPT_COUNT=$(find . -name "*.sh" -type f | wc -l)
+        cd ..
+        
+        git commit -m "📚 Auto-update documentation
+        
+        - Source: ${{ steps.config.outputs.toolbox_repo }}
+        - Latest commit: $LATEST_COMMIT_HASH - $LATEST_COMMIT_MSG
+        - Scripts processed: $SCRIPT_COUNT
+        - Generated: $(date '+%Y-%m-%d %H:%M:%S UTC')
+        
+        [skip ci]" || exit 0
+    
+    - name: Push documentation changes
+      if: steps.verify-changed-files.outputs.changed == 'true'
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ github.ref }}
+    
+    - name: Trigger Pages deployment
+      if: steps.verify-changed-files.outputs.changed == 'true'
+      run: |
+        echo "🚀 Documentation updated, Pages deployment will be triggered automatically"

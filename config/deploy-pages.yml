@@ -1,0 +1,535 @@
+name: Deploy Documentation Pages
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_run:
+    workflows: ["Generate Documentation"]
+    types:
+      - completed
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Build job
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm install -g @marp-team/marp-cli
+          npm install -g markdown-it markdown-it-anchor markdown-it-table-of-contents
+          
+      - name: Create enhanced pages
+        run: |
+          chmod +x scripts/create_web_pages.sh
+          ./scripts/create_web_pages.sh
+
+      - name: Build with Jekyll
+        run: |
+          # Setup Jekyll site structure
+          mkdir -p _site
+          cp -r docs/* _site/
+          
+          # Create Jekyll config
+          cat > _config.yml << 'EOF'
+          title: "🛡️ Toolbox Documentation"
+          description: "Comprehensive documentation for the Toolbox Menu System"
+          baseurl: ""
+          url: "https://${{ github.repository_owner }}.github.io"
+          
+          markdown: kramdown
+          highlighter: rouge
+          theme: minima
+          
+          plugins:
+            - jekyll-feed
+            - jekyll-sitemap
+            - jekyll-seo-tag
+          
+          kramdown:
+            input: GFM
+            syntax_highlighter: rouge
+          
+          collections:
+            categories:
+              output: true
+              permalink: /:collection/:name/
+          
+          defaults:
+            - scope:
+                path: ""
+                type: "pages"
+              values:
+                layout: "default"
+          EOF
+          
+          # Create enhanced layout
+          mkdir -p _layouts
+          cat > _layouts/default.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>
+              <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+              <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-tomorrow.min.css">
+              <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+          </head>
+          <body>
+              <header class="site-header">
+                  <div class="container">
+                      <h1><a href="{{ '/' | relative_url }}">🛡️ {{ site.title }}</a></h1>
+                      <nav>
+                          <a href="{{ '/' | relative_url }}">Home</a>
+                          <a href="{{ '/SCRIPT_INDEX.html' | relative_url }}">Index</a>
+                          <a href="{{ '/STATISTICS.html' | relative_url }}">Statistics</a>
+                          <a href="https://github.com/{{ github.repository }}">GitHub</a>
+                      </nav>
+                  </div>
+              </header>
+              
+              <main class="main-content">
+                  <div class="container">
+                      {{ content }}
+                  </div>
+              </main>
+              
+              <footer class="site-footer">
+                  <div class="container">
+                      <p>&copy; {{ 'now' | date: "%Y" }} Toolbox Menu System. Generated automatically from script headers.</p>
+                      <p>Last updated: {{ site.time | date: "%Y-%m-%d %H:%M:%S" }}</p>
+                  </div>
+              </footer>
+              
+              <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-core.min.js"></script>
+              <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/plugins/autoloader/prism-autoloader.min.js"></script>
+              <script src="{{ '/assets/js/main.js' | relative_url }}"></script>
+          </body>
+          </html>
+          EOF
+          
+          # Create custom CSS
+          mkdir -p assets/css
+          cat > assets/css/style.css << 'EOF'
+          /* Modern documentation styling */
+          * {
+              box-sizing: border-box;
+          }
+          
+          body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              margin: 0;
+              padding: 0;
+              background: #f8f9fa;
+          }
+          
+          .container {
+              max-width: 1200px;
+              margin: 0 auto;
+              padding: 0 20px;
+          }
+          
+          /* Header */
+          .site-header {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 1rem 0;
+              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          }
+          
+          .site-header h1 {
+              margin: 0;
+              display: inline-block;
+          }
+          
+          .site-header h1 a {
+              color: white;
+              text-decoration: none;
+          }
+          
+          .site-header nav {
+              float: right;
+              margin-top: 0.5rem;
+          }
+          
+          .site-header nav a {
+              color: white;
+              text-decoration: none;
+              margin-left: 2rem;
+              padding: 0.5rem 1rem;
+              border-radius: 4px;
+              transition: background 0.3s;
+          }
+          
+          .site-header nav a:hover {
+              background: rgba(255,255,255,0.2);
+          }
+          
+          /* Main content */
+          .main-content {
+              background: white;
+              margin: 2rem auto;
+              padding: 2rem;
+              border-radius: 8px;
+              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+              min-height: 60vh;
+          }
+          
+          /* Typography */
+          h1, h2, h3, h4, h5, h6 {
+              color: #2c3e50;
+              margin-top: 2rem;
+              margin-bottom: 1rem;
+          }
+          
+          h1 { font-size: 2.5rem; border-bottom: 3px solid #3498db; padding-bottom: 0.5rem; }
+          h2 { font-size: 2rem; border-bottom: 2px solid #e74c3c; padding-bottom: 0.3rem; }
+          h3 { font-size: 1.5rem; color: #e67e22; }
+          
+          /* Links */
+          a {
+              color: #3498db;
+              text-decoration: none;
+          }
+          
+          a:hover {
+              text-decoration: underline;
+          }
+          
+          /* Code blocks */
+          pre {
+              background: #2d3748;
+              color: #e2e8f0;
+              padding: 1.5rem;
+              border-radius: 8px;
+              overflow-x: auto;
+              margin: 1.5rem 0;
+          }
+          
+          code {
+              background: #f1f5f9;
+              padding: 0.2rem 0.4rem;
+              border-radius: 4px;
+              font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+              font-size: 0.9em;
+          }
+          
+          pre code {
+              background: none;
+              padding: 0;
+          }
+          
+          /* Tables */
+          table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 1.5rem 0;
+              background: white;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          }
+          
+          th, td {
+              padding: 1rem;
+              text-align: left;
+              border-bottom: 1px solid #e2e8f0;
+          }
+          
+          th {
+              background: #f8fafc;
+              font-weight: 600;
+              color: #2d3748;
+          }
+          
+          tr:hover {
+              background: #f8fafc;
+          }
+          
+          /* Lists */
+          ul, ol {
+              margin: 1rem 0;
+              padding-left: 2rem;
+          }
+          
+          li {
+              margin: 0.5rem 0;
+          }
+          
+          /* Badges and labels */
+          .badge {
+              display: inline-block;
+              padding: 0.25rem 0.5rem;
+              font-size: 0.8rem;
+              font-weight: 600;
+              border-radius: 4px;
+              margin: 0.2rem;
+          }
+          
+          .badge-primary { background: #3498db; color: white; }
+          .badge-success { background: #27ae60; color: white; }
+          .badge-warning { background: #f39c12; color: white; }
+          .badge-danger { background: #e74c3c; color: white; }
+          
+          /* Cards */
+          .card {
+              background: white;
+              border-radius: 8px;
+              padding: 1.5rem;
+              margin: 1rem 0;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+              border-left: 4px solid #3498db;
+          }
+          
+          .card h3 {
+              margin-top: 0;
+              color: #2c3e50;
+          }
+          
+          /* Footer */
+          .site-footer {
+              background: #2c3e50;
+              color: #bdc3c7;
+              text-align: center;
+              padding: 2rem 0;
+              margin-top: 3rem;
+          }
+          
+          .site-footer p {
+              margin: 0.5rem 0;
+          }
+          
+          /* Responsive */
+          @media (max-width: 768px) {
+              .site-header nav {
+                  float: none;
+                  margin-top: 1rem;
+              }
+              
+              .site-header nav a {
+                  display: block;
+                  margin: 0.5rem 0;
+              }
+              
+              .main-content {
+                  margin: 1rem;
+                  padding: 1rem;
+              }
+              
+              h1 { font-size: 2rem; }
+              h2 { font-size: 1.5rem; }
+          }
+          
+          /* Search functionality */
+          .search-box {
+              margin: 2rem 0;
+              position: relative;
+          }
+          
+          .search-box input {
+              width: 100%;
+              padding: 1rem;
+              font-size: 1.1rem;
+              border: 2px solid #e2e8f0;
+              border-radius: 8px;
+              outline: none;
+          }
+          
+          .search-box input:focus {
+              border-color: #3498db;
+              box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+          }
+          
+          .search-results {
+              position: absolute;
+              top: 100%;
+              left: 0;
+              right: 0;
+              background: white;
+              border: 1px solid #e2e8f0;
+              border-radius: 8px;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+              max-height: 300px;
+              overflow-y: auto;
+              z-index: 1000;
+          }
+          
+          .search-result {
+              padding: 1rem;
+              border-bottom: 1px solid #f1f5f9;
+              cursor: pointer;
+          }
+          
+          .search-result:hover {
+              background: #f8fafc;
+          }
+          
+          .search-result:last-child {
+              border-bottom: none;
+          }
+          EOF
+          
+          # Create JavaScript for interactivity
+          mkdir -p assets/js
+          cat > assets/js/main.js << 'EOF'
+          // Search functionality
+          document.addEventListener('DOMContentLoaded', function() {
+              // Add search box to pages
+              const mainContent = document.querySelector('.main-content .container');
+              if (mainContent && window.location.pathname !== '/') {
+                  const searchBox = document.createElement('div');
+                  searchBox.className = 'search-box';
+                  searchBox.innerHTML = `
+                      <input type="text" placeholder="🔍 Search documentation..." id="search-input">
+                      <div class="search-results" id="search-results" style="display: none;"></div>
+                  `;
+                  mainContent.insertBefore(searchBox, mainContent.firstChild);
+                  
+                  // Simple search functionality
+                  const searchInput = document.getElementById('search-input');
+                  const searchResults = document.getElementById('search-results');
+                  
+                  searchInput.addEventListener('input', function() {
+                      const query = this.value.toLowerCase();
+                      if (query.length < 2) {
+                          searchResults.style.display = 'none';
+                          return;
+                      }
+                      
+                      // Simple text search in current page
+                      const results = [];
+                      const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+                      
+                      headings.forEach(heading => {
+                          if (heading.textContent.toLowerCase().includes(query)) {
+                              results.push({
+                                  title: heading.textContent,
+                                  element: heading
+                              });
+                          }
+                      });
+                      
+                      if (results.length > 0) {
+                          searchResults.innerHTML = results.map(result => 
+                              `<div class="search-result" onclick="scrollToElement('${result.element.id || result.title}')">${result.title}</div>`
+                          ).join('');
+                          searchResults.style.display = 'block';
+                      } else {
+                          searchResults.style.display = 'none';
+                      }
+                  });
+                  
+                  // Hide search results when clicking outside
+                  document.addEventListener('click', function(e) {
+                      if (!searchBox.contains(e.target)) {
+                          searchResults.style.display = 'none';
+                      }
+                  });
+              }
+              
+              // Smooth scrolling for anchor links
+              document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                  anchor.addEventListener('click', function (e) {
+                      e.preventDefault();
+                      const target = document.querySelector(this.getAttribute('href'));
+                      if (target) {
+                          target.scrollIntoView({
+                              behavior: 'smooth',
+                              block: 'start'
+                          });
+                      }
+                  });
+              });
+              
+              // Add copy buttons to code blocks
+              document.querySelectorAll('pre code').forEach(block => {
+                  const button = document.createElement('button');
+                  button.className = 'copy-button';
+                  button.textContent = '📋 Copy';
+                  button.style.cssText = `
+                      position: absolute;
+                      top: 0.5rem;
+                      right: 0.5rem;
+                      background: #4a5568;
+                      color: white;
+                      border: none;
+                      padding: 0.25rem 0.5rem;
+                      border-radius: 4px;
+                      cursor: pointer;
+                      font-size: 0.8rem;
+                  `;
+                  
+                  block.parentElement.style.position = 'relative';
+                  block.parentElement.appendChild(button);
+                  
+                  button.addEventListener('click', function() {
+                      navigator.clipboard.writeText(block.textContent).then(() => {
+                          button.textContent = '✅ Copied!';
+                          setTimeout(() => {
+                              button.textContent = '📋 Copy';
+                          }, 2000);
+                      });
+                  });
+              });
+          });
+          
+          function scrollToElement(id) {
+              const element = document.getElementById(id) || document.querySelector(`[data-id="${id}"]`);
+              if (element) {
+                  element.scrollIntoView({ behavior: 'smooth' });
+              }
+          }
+          EOF
+
+      - name: Build site
+        run: |
+          # Convert markdown files to HTML with enhanced features
+          bundle exec jekyll build --destination _site
+        env:
+          JEKYLL_ENV: production
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  # Deployment job
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

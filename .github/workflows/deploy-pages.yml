@@ -67,7 +67,7 @@ EOF
 title: "🛡️ Toolbox Documentation"
 description: "Comprehensive documentation for system administration scripts"
 baseurl: ""
-url: "https://${{ github.repository_owner }}.github.io"
+url: "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
 
 markdown: kramdown
 highlighter: rouge

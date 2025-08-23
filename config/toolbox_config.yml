@@ -1,0 +1,36 @@
+# Configuration for ToolboxNinja Web Documentation Generator
+toolbox_repositories:
+  - name: "Primary Toolbox"
+    url: "https://github.com/alistairhendersoninfo/toolbox"
+    branch: "main"
+    description: "Main toolbox scripts repository"
+    
+# Web generation settings
+web_settings:
+  title: "🛡️ Toolbox Documentation"
+  description: "Comprehensive documentation for system administration scripts"
+  author: "Alistair Henderson"
+  theme: "minima"
+  
+# GitHub Pages settings
+pages_settings:
+  enable_search: true
+  enable_rss: true
+  enable_sitemap: true
+  google_analytics: null # Add your GA ID here if needed
+  
+# Build settings
+build_settings:
+  exclude_patterns:
+    - "scripts/"
+    - "config/"  
+    - "guides/"
+    - "templates/"
+    - "*.sh"
+  include_patterns:
+    - "*.md"
+    - "*.html"
+    - "*.css"
+    - "*.js"
+    - "*.json"
+    - "*.xml"

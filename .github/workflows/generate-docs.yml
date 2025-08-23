@@ -15,7 +15,7 @@ on:
       toolbox_repo:
         description: 'Toolbox repository URL'
         required: false
-        default: 'https://github.com/yourusername/toolboxninja'
+        default: 'https://github.com/alistairhendersoninfo/toolbox'
       force_rebuild:
         description: 'Force complete rebuild'
         required: false
@@ -42,9 +42,9 @@ jobs:
       id: config
       run: |
         if [ -f "config/toolbox_config.yml" ]; then
-          TOOLBOX_REPO=$(yq eval '.toolbox_repositories[0].url' config/toolbox_config.yml 2>/dev/null || echo "https://github.com/yourusername/toolboxninja")
+          TOOLBOX_REPO=$(yq eval '.toolbox_repositories[0].url' config/toolbox_config.yml 2>/dev/null || echo "https://github.com/alistairhendersoninfo/toolbox")
         else
-          TOOLBOX_REPO="${{ github.event.inputs.toolbox_repo || 'https://github.com/yourusername/toolboxninja' }}"
+          TOOLBOX_REPO="${{ github.event.inputs.toolbox_repo || 'https://github.com/alistairhendersoninfo/toolbox' }}"
         fi
         echo "toolbox_repo=$TOOLBOX_REPO" >> $GITHUB_OUTPUT
         echo "📊 Toolbox Repository: $TOOLBOX_REPO"
@@ -52,7 +52,7 @@ jobs:
     - name: Checkout toolbox repository
       uses: actions/checkout@v4
       with:
-        repository: ${{ steps.config.outputs.toolbox_repo }}
+        repository: alistairhendersoninfo/toolbox
         path: toolbox_source
         fetch-depth: 1
     

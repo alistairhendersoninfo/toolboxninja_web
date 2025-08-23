@@ -135,7 +135,7 @@ jobs:
     - name: Commit documentation changes
       if: steps.verify-changed-files.outputs.changed == 'true'
       run: |
-        git add docs/ _site/ .last_scan_commit
+        git add docs/ _site/ .last_scan_commit 2>/dev/null || git add docs/ _site/
         
         # Get commit info from source repository
         cd toolbox_source
